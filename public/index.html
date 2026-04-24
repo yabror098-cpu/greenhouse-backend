@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GREENHOUSE</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:sans-serif;background:#0f1a14;color:#d4e8cc;padding:16px;min-height:100vh}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid rgba(45,120,60,0.2)}
+.logo{font-size:20px;font-weight:bold;color:#2db86a;letter-spacing:2px}
+.logo-sub{font-size:11px;color:#4a6e44;margin-top:2px}
+.status{display:flex;align-items:center;gap:7px;font-size:12px;color:#7a9e72}
+.dot{width:8px;height:8px;border-radius:50%;background:#2db86a;animation:pulse 2s infinite}
+.dot.off{background:#e0504a;animation:none}
+.dot.warn{background:#e8a832;animation:none}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* REJECTED OVERLAY */
+.overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:999;display:none}
+.overlay.show{display:flex}
+.overlay-box{background:#1a2418;border:1px solid rgba(224,80,74,0.4);border-radius:16px;padding:32px;text-align:center;max-width:360px}
+.overlay-icon{font-size:48px;margin-bottom:16px}
+.overlay-title{font-size:18px;font-weight:bold;color:#e0504a;margin-bottom:10px}
+.overlay-msg{font-size:13px;color:#7a9e72;line-height:1.6;margin-bottom:20px}
+.overlay-btn{padding:10px 28px;background:#e0504a;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-family:sans-serif}
+.overlay-btn:hover{background:#c03030}
+
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+@media(max-width:600px){.grid3{grid-template-columns:1fr 1fr}.grid2{grid-template-columns:1fr}}
+.card{background:#1a2418;border:1px solid rgba(45,120,60,0.18);border-radius:12px;padding:14px 16px}
+.label{font-size:10px;color:#4a6e44;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
+.val{font-size:28px;font-weight:bold;font-family:monospace;line-height:1}
+.sub{font-size:11px;color:#4a6e44;margin-top:5px}
+.bar{height:5px;background:rgba(255,255,255,0.07);border-radius:3px;margin-top:10px;overflow:hidden}
+.fill{height:100%;border-radius:3px;transition:width 1s}
+.g{background:#2db86a}.b{background:#3d9edb}.r{background:#e0504a}.a{background:#e8a832}
+.zone-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.zone-lbl{font-size:12px;color:#7a9e72}
+.zone-val{font-size:14px;font-family:monospace;font-weight:bold}
+.mini-bar{width:70px;height:4px;background:rgba(255,255,255,0.07);border-radius:2px;overflow:hidden}
+.mini-fill{height:100%;border-radius:2px;transition:width 1s}
+.alert{background:rgba(232,168,50,0.1);border:1px solid rgba(232,168,50,0.3);border-radius:8px;padding:8px 10px;font-size:11px;color:#e8a832;margin-top:10px;display:none}
+.btn{width:100%;padding:10px;border-radius:8px;border:1px solid;font-size:13px;font-weight:500;cursor:pointer;margin-top:10px;transition:all 0.2s;font-family:sans-serif}
+.btn-g{background:rgba(45,184,106,0.1);color:#2db86a;border-color:rgba(45,184,106,0.3)}
+.btn-g.on{background:#1d9e55;color:#fff;border-color:#1d9e55}
+.btn-b{background:rgba(61,158,219,0.1);color:#3d9edb;border-color:rgba(61,158,219,0.3)}
+.btn-b.on{background:#1a7aaa;color:#fff;border-color:#1a7aaa}
+.btn:active{transform:scale(0.98)}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+.zone-pill{font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(45,184,106,0.1);color:#2db86a;border:1px solid rgba(45,184,106,0.2);margin-left:6px}
+.esp-warn{background:rgba(224,80,74,0.1);border:1px solid rgba(224,80,74,0.3);border-radius:8px;padding:8px 12px;font-size:12px;color:#e0504a;margin-bottom:12px;display:none}
+.log{background:#0f1a14;border:1px solid rgba(45,120,60,0.18);border-radius:12px;padding:14px;margin-top:12px}
+.log-title{font-size:10px;color:#4a6e44;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;display:flex;justify-content:space-between}
+.log-clear{background:none;border:none;color:#4a6e44;cursor:pointer;font-size:11px}
+.log-clear:hover{color:#e0504a}
+#logList{max-height:130px;overflow-y:auto;display:flex;flex-direction:column;gap:3px}
+.li{font-family:monospace;font-size:11px;padding:2px 0;border-bottom:1px solid rgba(45,120,60,0.1);display:flex;gap:8px}
+.lt{color:#4a6e44}.lg{color:#2db86a}.la{color:#e8a832}.lr{color:#e0504a}.lb{color:#3d9edb}
+</style>
+</head>
+<body>
+
+<!-- RAD ETILGAN OVERLAY -->
+<div class="overlay" id="rejectedOverlay">
+  <div class="overlay-box">
+    <div class="overlay-icon">🔒</div>
+    <div class="overlay-title">Ulanish rad etildi</div>
+    <div class="overlay-msg" id="rejectedMsg">Boshqa qurilma allaqachon tizimga ulangan. Birinchi ulangan qurilma uzilgandan keyin urinib ko'ring.</div>
+    <button class="overlay-btn" onclick="retryConnect()">Qayta urinish</button>
+  </div>
+</div>
+
+<div class="header">
+  <div>
+    <div class="logo">🌿 GREENHOUSE</div>
+    <div class="logo-sub">Aqlli issiqxona monitoring tizimi</div>
+  </div>
+  <div class="status">
+    <span class="dot off" id="dot"></span>
+    <span id="statusTxt">ULANMOQDA...</span>
+  </div>
+</div>
+
+<div class="esp-warn" id="espWarn">⚠ ESP32 serverga ulanmagan — sensorlar ishlamayapti</div>
+
+<div class="grid3">
+  <div class="card">
+    <div class="label">Harorat</div>
+    <div class="val" style="color:#e0504a" id="tempVal">--<span style="font-size:14px;color:#7a9e72">°C</span></div>
+    <div class="sub" id="tempSub">—</div>
+    <div class="bar"><div class="fill r" id="tempBar" style="width:0%"></div></div>
+  </div>
+  <div class="card">
+    <div class="label">Zona 1 — Tuproq</div>
+    <div class="val" style="color:#2db86a" id="s1Val">--<span style="font-size:14px;color:#7a9e72">%</span></div>
+    <div class="sub" id="s1Sub">—</div>
+    <div class="bar"><div class="fill g" id="s1Bar" style="width:0%"></div></div>
+  </div>
+  <div class="card">
+    <div class="label">Zona 2 — Tuproq</div>
+    <div class="val" style="color:#2db86a" id="s2Val">--<span style="font-size:14px;color:#7a9e72">%</span></div>
+    <div class="sub" id="s2Sub">—</div>
+    <div class="bar"><div class="fill g" id="s2Bar" style="width:0%"></div></div>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <div style="display:flex;align-items:center;margin-bottom:12px">
+      <span style="font-size:14px;font-weight:500">Zona 1</span>
+      <span class="zone-pill">G'arbiy</span>
+    </div>
+    <div class="zone-row">
+      <span class="zone-lbl">Tuproq namligi</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="mini-bar"><div class="mini-fill g" id="z1sb" style="width:0%"></div></div>
+        <span class="zone-val" style="color:#2db86a" id="z1sv">--%</span>
+      </div>
+    </div>
+    <div class="zone-row">
+      <span class="zone-lbl">Suv sathi</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="mini-bar"><div class="mini-fill b" id="z1wb" style="width:0%"></div></div>
+        <span class="zone-val" style="color:#3d9edb" id="z1wv">--%</span>
+      </div>
+    </div>
+    <div class="zone-row">
+      <span class="zone-lbl">Motor holati</span>
+      <span class="zone-val" style="font-size:12px" id="z1ps">OFF</span>
+    </div>
+    <div class="alert" id="alt1">⚠ Namlik past — sug'orish kerak!</div>
+    <button class="btn btn-g" id="p1btn" onclick="togglePump(1)">💧 Sug'orish</button>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;align-items:center;margin-bottom:12px">
+      <span style="font-size:14px;font-weight:500">Zona 2</span>
+      <span class="zone-pill">Sharqiy</span>
+    </div>
+    <div class="zone-row">
+      <span class="zone-lbl">Tuproq namligi</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="mini-bar"><div class="mini-fill g" id="z2sb" style="width:0%"></div></div>
+        <span class="zone-val" style="color:#2db86a" id="z2sv">--%</span>
+      </div>
+    </div>
+    <div class="zone-row">
+      <span class="zone-lbl">Suv sathi</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="mini-bar"><div class="mini-fill b" id="z2wb" style="width:0%"></div></div>
+        <span class="zone-val" style="color:#3d9edb" id="z2wv">--%</span>
+      </div>
+    </div>
+    <div class="zone-row">
+      <span class="zone-lbl">Motor holati</span>
+      <span class="zone-val" style="font-size:12px" id="z2ps">OFF</span>
+    </div>
+    <div class="alert" id="alt2">⚠ Namlik past — sug'orish kerak!</div>
+    <button class="btn btn-g" id="p2btn" onclick="togglePump(2)">💧 Sug'orish</button>
+  </div>
+</div>
+
+<div class="card">
+  <div style="display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div class="label">Ventilyatsiya</div>
+      <div style="font-size:13px;margin-top:4px" id="fanSub">Holat: O'chiq</div>
+    </div>
+    <button class="btn btn-b" id="fanBtn" onclick="toggleFan()" style="width:200px;margin-top:0">🌀 Ventilyatsiyani yoqish</button>
+  </div>
+</div>
+
+<div class="log">
+  <div class="log-title">
+    <span>Tizim jurnali</span>
+    <button class="log-clear" onclick="document.getElementById('logList').innerHTML=''">Tozalash</button>
+  </div>
+  <div id="logList"></div>
+</div>
+
+<script>
+let ws;
+let pump1=false, pump2=false, fan=false;
+let accepted=false;
+
+const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host;
+
+function connect() {
+  ws = new WebSocket(WS_URL);
+
+  ws.onopen = () => {
+    // O'zimizni dashboard sifatida tanishtirish
+    ws.send(JSON.stringify({ role: 'dashboard' }));
+    log('Serverga ulandi, tekshirilmoqda...', 'a');
+  };
+
+  ws.onmessage = (e) => {
+    const d = JSON.parse(e.data);
+
+    // Rad etildi
+    if (d.type === 'rejected') {
+      document.getElementById('rejectedMsg').textContent = d.reason;
+      document.getElementById('rejectedOverlay').classList.add('show');
+      log('Ulanish rad etildi!', 'r');
+      return;
+    }
+
+    // Qabul qilindi
+    if (d.type === 'accepted') {
+      accepted = true;
+      document.getElementById('dot').className = 'dot';
+      document.getElementById('statusTxt').textContent = 'ULANDI';
+      log('Muvaffaqiyatli ulandi!', 'g');
+      setButtons(false);
+      return;
+    }
+
+    // ESP32 uzildi
+    if (d.type === 'esp_disconnected') {
+      document.getElementById('espWarn').style.display = 'block';
+      log('ESP32 uzildi!', 'r');
+      setButtons(true);
+      return;
+    }
+
+    // Sensor ma'lumotlari
+    if (d.type === 'sensor') {
+      document.getElementById('espWarn').style.display = 'none';
+      setButtons(false);
+      updateUI(d);
+    }
+  };
+
+  ws.onclose = () => {
+    accepted = false;
+    document.getElementById('dot').className = 'dot off';
+    document.getElementById('statusTxt').textContent = 'UZILDI — qayta ulanmoqda...';
+    log('Server bilan aloqa uzildi...', 'r');
+    setTimeout(connect, 3000);
+  };
+
+  ws.onerror = () => {
+    log('Ulanish xatosi!', 'r');
+  };
+}
+
+function retryConnect() {
+  document.getElementById('rejectedOverlay').classList.remove('show');
+  setTimeout(connect, 1000);
+}
+
+function setButtons(disabled) {
+  ['p1btn','p2btn','fanBtn'].forEach(id => {
+    document.getElementById(id).disabled = disabled;
+  });
+}
+
+function updateUI(d) {
+  // Harorat
+  const t = parseFloat(d.temp).toFixed(1);
+  document.getElementById('tempVal').innerHTML = t + '<span style="font-size:14px;color:#7a9e72">°C</span>';
+  document.getElementById('tempBar').style.width = Math.min(d.temp/50*100,100) + '%';
+  document.getElementById('tempSub').textContent = d.temp>=35?'Qizib ketgan!':d.temp>=30?'Biroz issiq':'Normal';
+
+  // Tuproq
+  updMetric('s1Val','s1Bar','s1Sub', d.zone1_soil);
+  updMetric('s2Val','s2Bar','s2Sub', d.zone2_soil);
+
+  // Zona 1
+  document.getElementById('z1sv').textContent = d.zone1_soil + '%';
+  document.getElementById('z1sb').style.width = d.zone1_soil + '%';
+  document.getElementById('z1wv').textContent = d.zone1_water + '%';
+  document.getElementById('z1wb').style.width = d.zone1_water + '%';
+  // Zona 2
+  document.getElementById('z2sv').textContent = d.zone2_soil + '%';
+  document.getElementById('z2sb').style.width = d.zone2_soil + '%';
+  document.getElementById('z2wv').textContent = d.zone2_water + '%';
+  document.getElementById('z2wb').style.width = d.zone2_water + '%';
+
+  // Alertlar
+  document.getElementById('alt1').style.display = d.zone1_soil < 40 ? 'block' : 'none';
+  document.getElementById('alt2').style.display = d.zone2_soil < 40 ? 'block' : 'none';
+}
+
+function updMetric(vid, bid, sid, val) {
+  document.getElementById(vid).innerHTML = val + '<span style="font-size:14px;color:#7a9e72">%</span>';
+  document.getElementById(bid).style.width = val + '%';
+  document.getElementById(sid).textContent = val<40 ? 'Past — sug\'orish kerak' : val>75 ? 'Yetarli' : 'Normal';
+}
+
+function send(obj) {
+  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+}
+
+function togglePump(z) {
+  if (z === 1) {
+    pump1 = !pump1;
+    send({ cmd: 'pump1', state: pump1 });
+    const b = document.getElementById('p1btn');
+    b.className = 'btn btn-g' + (pump1 ? ' on' : '');
+    b.textContent = pump1 ? '⏹ To\'xtatish' : '💧 Sug\'orish';
+    document.getElementById('z1ps').textContent = pump1 ? 'YONIQ' : 'OFF';
+    document.getElementById('z1ps').style.color = pump1 ? '#2db86a' : '#4a6e44';
+    log('Zona 1 motor: ' + (pump1 ? 'YOQILDI' : 'O\'CHIRILDI'), pump1 ? 'g' : 'a');
+  } else {
+    pump2 = !pump2;
+    send({ cmd: 'pump2', state: pump2 });
+    const b = document.getElementById('p2btn');
+    b.className = 'btn btn-g' + (pump2 ? ' on' : '');
+    b.textContent = pump2 ? '⏹ To\'xtatish' : '💧 Sug\'orish';
+    document.getElementById('z2ps').textContent = pump2 ? 'YONIQ' : 'OFF';
+    document.getElementById('z2ps').style.color = pump2 ? '#2db86a' : '#4a6e44';
+    log('Zona 2 motor: ' + (pump2 ? 'YOQILDI' : 'O\'CHIRILDI'), pump2 ? 'g' : 'a');
+  }
+}
+
+function toggleFan() {
+  fan = !fan;
+  send({ cmd: 'fan', state: fan });
+  const b = document.getElementById('fanBtn');
+  b.className = 'btn btn-b' + (fan ? ' on' : '');
+  b.textContent = fan ? '⏹ Ventilyatsiyani o\'chirish' : '🌀 Ventilyatsiyani yoqish';
+  document.getElementById('fanSub').textContent = 'Holat: ' + (fan ? 'YONIQ' : 'O\'chiq');
+  log('Ventilator: ' + (fan ? 'YOQILDI' : 'O\'CHIRILDI'), fan ? 'b' : 'a');
+}
+
+function log(msg, cls='') {
+  const t = new Date().toLocaleTimeString('uz-UZ');
+  const li = document.createElement('div');
+  li.className = 'li';
+  li.innerHTML = '<span class="lt">' + t + '</span><span class="l' + cls + '">' + msg + '</span>';
+  const l = document.getElementById('logList');
+  l.insertBefore(li, l.firstChild);
+  if (l.children.length > 40) l.removeChild(l.lastChild);
+}
+
+log('Tizim ishga tushdi', 'g');
+connect();
+</script>
+</body>
+</html>
